@@ -17,6 +17,8 @@ Contents
 --------
 
 .. toctree::
-
-   usage
+   :maxdepth: 2
+   :caption: Contenidos:
+   
    api
+   models
