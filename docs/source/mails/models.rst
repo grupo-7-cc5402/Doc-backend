@@ -118,6 +118,6 @@ Campos
 
 - **ultimo_uso** (:class:`DateTimeField`): Fecha y hora de la última vez que se utilizó el correo.
 
-  .. code_block:: python
+  .. code-block:: python
 
       ultimo_uso = models.DateTimeField(auto_now_add=True)
