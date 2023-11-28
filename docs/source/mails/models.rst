@@ -63,10 +63,6 @@ Campos
 
       usuario_autor = models.ForeignKey(Usuario, related_name='correo_creado', on_delete=models.SET_NULL, null=True)
 
-Uso
----
-
-Este modelo se utiliza para almacenar una lista de correos por enviar.
 
 
 
@@ -102,8 +98,26 @@ Campos
 
       email = models.EmailField(null=False)
 
-- **clave** (:class:`CharField`): Este campo almacena la clave para acceder a la cuenta del correo. Idealmente esta debe ser una _clave de aplicación_.
+- **clave** (:class:`CharField`): Este campo almacena la clave para acceder a la cuenta del correo. Idealmente esta debe ser una *clave de aplicación*, válida sólo accesos desde la aplicación.
 
   .. code-block:: python
 
       clave = models.CharField(max_length=100, null=False)
+
+- **limite** (:class:`IntegerField`): Este campo almacena el límite de envios diaros de la cuenta. Tiene por defecto el valor especificado en ``LIMITE_ENVIOS``.
+
+  .. code-block:: python
+
+      limite = models.IntegerField(default=LIMITE_ENVIOS)
+
+- **usos_disponibles** (:class:`IntegerField`): Este campo almacena el número de correos que aún se pueden enviar desde la cuenta hasta alcanzar el límite diario. Tiene por defecto el valor especificado en ``LIMITE_ENVIOS``.
+
+  .. code-block:: python
+
+      usos_disponibles = models.IntegerField(default=LIMITE_ENVIOS)
+
+- **ultimo_uso** (:class:`DateTimeField`): Fecha y hora de la última vez que se utilizó el correo.
+
+  .. code_block:: python
+
+      ultimo_uso = models.DateTimeField(auto_now_add=True)
