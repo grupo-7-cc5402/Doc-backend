@@ -100,7 +100,7 @@ Uso
 ---
 
 >>> message_format("{paciente@nombre} tiene cita asignada para el día {evento@dia} a las {evento@hora}")
-"Rodrigo Gonzalez tiene cita asignada para el día 2023-11-28 a las 19:30"
+"Rodrigo Gonzalez tiene cita asignada para el día 28 de noviembre de 2023 a las 19:30"
 
 
 
@@ -108,7 +108,7 @@ Uso
 enqueue_mails
 =============
 
-Función para añadir todos los correos de una campaña a la cola de envio.
+Función para añadir todos los correos de una campaña a la cola de envio. Para cada recordatorio de la campaña se recorren todos los eventos asociados, añadiendo correos a la cola de envio, con el texto y horas de anticipación especificados.
 
 Parámetros
 ----------
