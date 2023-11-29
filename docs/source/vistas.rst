@@ -7,3 +7,4 @@ Documentación de las vistas utilizadas en el proyecto.
    :maxdepth: 2
 
    contactabilidad/views/evento
+   contactabilidad/views/reporte
