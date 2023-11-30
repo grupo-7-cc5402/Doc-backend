@@ -7,4 +7,5 @@ Bienvenidos a la documentación de APP Contactabilidad Backend
 
    api
    modelos
+   serializers
    vistas
