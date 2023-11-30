@@ -306,3 +306,188 @@ Métodos
         if hora:
             return fecha + ' ' + hora
         return fecha
+
+
+- ``read_eventos(self, json_file)``: Lee el contenido de un json de eventos (lista de diccionarios) y crea una nueva versión con los campos válidos para el modelos de datos.
+
+.. code-block:: python
+
+    def read_eventos(self, json_file: List[Dict]) -> List[Dict]:
+         
+        eventos = []
+
+        data_list = json_file
+        columnas = list(data_list[0].keys())
+
+        rut_col = self.get_rut_col(columnas)
+        dv_col = self.get_dv_col(columnas)
+        subespecialidad_col = self.get_subespecialidad_col(columnas)
+        especialidad_col = self.get_especialidad_col(columnas)
+        pac_col = self.get_paciente_col(columnas)
+        id_col = self.get_id_col(columnas)
+        telefono_cols = self.get_telefono_cols(columnas)
+        correo_cols = self.get_correo_cols(columnas)
+        centro_col = self.get_centro_col(columnas)
+        medico_col = self.get_medico_col(columnas)
+        procedimiento_col = self.get_procedimiento_col(columnas)
+        desc_col = self.get_desc_col(columnas)
+        fecha_col, hora_col = self.get_time_col(columnas)
+        
+        for row in data_list:
+
+            if len(list(filter(lambda x: x != None, row.values()))) == 0:
+                continue
+
+            evento = {
+                'fecha_programada': self.time_parser(row, fecha_col, hora_col),
+                'paciente': {
+                    'nombre': row[pac_col].replace(',', ''),
+                    'rut': str(row[rut_col])
+                }
+            }
+            if dv_col:
+                evento['paciente']['rut'] = evento['paciente']['rut'] + '-' + str(row[dv_col])
+
+            if especialidad_col:
+                evento['especialidad'] = row[especialidad_col]
+            else:
+                evento['especialidad'] = None
+
+            if subespecialidad_col:
+                evento['subespecialidad'] = row[subespecialidad_col]
+            else:
+                evento['subespecialidad'] = None
+
+            if id_col:
+                id = row[id_col]
+                if type(id) == int:
+                    evento['id_externa'] = id
+                else:
+                    evento['id_externa'] = None
+            else:
+                evento['id_externa'] = None
+
+            if centro_col:
+                evento['centro'] = row[centro_col]
+
+            evento['profesional'] = None
+            if medico_col:
+                profesional = row[medico_col]
+                if type(profesional) == str:
+                    evento['profesional'] = row[medico_col]
+
+            if procedimiento_col:
+                evento['procedimiento'] = row[procedimiento_col]
+
+            if desc_col:
+                evento['descripcion'] = row[desc_col]
+            else:
+                evento['descripcion'] = ''
+            
+            telefonos = []
+            for telef_col in telefono_cols:
+                numero = row[telef_col]
+                if numero:
+                    if type(numero) == str:
+                        numero = numero.replace('+', '')
+                        try:
+                            numero = int(numero)
+                        except:
+                            continue
+                    if numero / 1e7 < 1:
+                        continue
+                    telefonos.append({'numero': str(numero)})
+            evento['telefonos'] = telefonos
+
+            correos = []
+            for correo_col in correo_cols:
+                correo = row[correo_col]
+                if correo:
+                    correos.append({'email': correo})
+            evento['correos'] = correos
+
+            eventos.append(evento) 
+        
+        return eventos
+
+
+- ``parse_eventos(self, tipo_eventos, eventos_json)``: Recibe un json de eventos junto a su tipo y crea una campaña con los mismos. Si hay pacientes o profesionales nuevos los añade a la base de datos. Si una especialidad, subespecialidad o centro no se encuentran en la base de datos, se añada a la descripción en vez del campo correspondiente.
+
+.. code-block:: python
+
+    def parse_eventos(self, tipo_eventos: str, eventos_json: List[Dict]):
+
+        eventos_list = self.read_eventos(eventos_json)
+
+        eventos = []
+        for evento_data in eventos_list:
+            paciente_data = evento_data.pop('paciente', [])
+            telefonos_data = evento_data.pop('telefonos', [])
+            correos_data = evento_data.pop('correos', [])
+            rut = paciente_data['rut']
+
+            if evento_data['especialidad']:
+                especialidad = evento_data['especialidad']
+                try:
+                    especialidad = Especialidad.validar_tipo(especialidad)
+                    especialidad_instance = Especialidad.objects.get(nombre=especialidad)
+                    evento_data['especialidad'] = especialidad_instance
+                except Especialidad.DoesNotExist:
+                    evento_data['especialidad'] = Especialidad.objects.get(nombre='ESPECIALIDAD INVALIDA')
+                    evento_data['descripcion'] = especialidad +'\n'+ evento_data['descripcion']
+                    
+            if evento_data['subespecialidad']:
+                subespecialidad = evento_data['subespecialidad']
+                try:
+                    subespecialidad = Subespecialidad.validar_tipo(subespecialidad)
+                    subespecialidad_instance = Subespecialidad.objects.get(nombre=subespecialidad)
+                    evento_data['subespecialidad'] = subespecialidad_instance
+                except Subespecialidad.DoesNotExist:
+                    evento_data['subespecialidad'] = Subespecialidad.objects.get(nombre='SUBESPECIALIDAD INVALIDA')
+                    evento_data['descripcion'] = subespecialidad +'\n'+ evento_data['descripcion']
+
+            centro = evento_data['centro']
+            try:
+                centro_ = CentroAtencion.validar_tipo(centro)
+                centro_instance = CentroAtencion.objects.get(nombre=centro_)
+                evento_data['centro'] = centro_instance
+            except CentroAtencion.DoesNotExist:
+                evento_data['centro'] = CentroAtencion.objects.get(nombre='CENTRO EXTERNO')
+                evento_data['descripcion'] = centro +'\n'+ evento_data['descripcion']
+            
+            if evento_data['profesional']:
+                profesional_instance, _ = Profesional.objects.get_or_create(nombre=evento_data['profesional'])
+                evento_data['profesional'] = profesional_instance
+
+            try:
+                paciente_instance = Paciente.objects.get(rut=rut)
+                evento_data['paciente'] = paciente_instance
+            except Paciente.DoesNotExist:
+                paciente_instance, _ = Paciente.objects.update_or_create(
+                    rut=rut,
+                    defaults=paciente_data
+                )
+                evento_data['paciente'] = paciente_instance
+
+                for telefono_data in telefonos_data:
+                    telefono_instance, _ = Telefono.objects.update_or_create(
+                        paciente=paciente_instance,
+                        numero=telefono_data['numero'],
+                        defaults=telefono_data
+                    )
+                
+                for correo_data in correos_data:
+                    correo_instance, _ = Correo.objects.update_or_create(
+                        paciente=paciente_instance,
+                        email=correo_data['email'],
+                        defaults=correo_data
+                    )
+
+            # Crea nuevo evento ignorando campos que no están en el modelo
+            evento = Evento()
+            for key, value in evento_data.items():
+                setattr(evento, key, value)
+
+            eventos.append(evento)
+        
+        return eventos
