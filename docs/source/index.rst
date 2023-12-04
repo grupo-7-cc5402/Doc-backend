@@ -9,3 +9,4 @@ Bienvenidos a la documentación de APP Contactabilidad Backend
    modelos
    serializers
    vistas
+   sms_docs
